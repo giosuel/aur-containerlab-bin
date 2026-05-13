@@ -1,0 +1,64 @@
+name: Auto-update AUR package
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check latest upstream version
+        id: upstream
+        run: |
+          set -euo pipefail
+          latest=$(curl -fsSL https://api.github.com/repos/srl-labs/containerlab/releases/latest | jq -r .tag_name | sed 's/^v//')
+          current=$(grep -Po '^pkgver=\K.*' PKGBUILD)
+          echo "latest=$latest"   >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          if [ "$latest" != "$current" ]; then
+            echo "changed=true"  >> "$GITHUB_OUTPUT"
+            echo "containerlab $current -> $latest"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "already at $current"
+          fi
+
+      - name: Bump pkgver in PKGBUILD
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.upstream.outputs.latest }}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          grep -E '^pkg(ver|rel)=' PKGBUILD
+
+      - name: Publish to AUR
+        if: steps.upstream.outputs.changed == 'true'
+        uses: KSXGitHub/github-actions-deploy-aur@2ac5a4c1d7035885d46b10e3193393be8460b6f1   # v4.1.1
+        with:
+          pkgname: containerlab-bin
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email:    ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "upgrade to ${{ steps.upstream.outputs.latest }}"
+          updpkgsums: true       # downloads tarball, rewrites sha256sums
+          test: true             # sanity-checks the build before publishing
+          allow_empty_commits: false
+
+      - name: Mirror updated PKGBUILD back to GitHub
+        if: steps.upstream.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          # The action ran updpkgsums in the working dir, so PKGBUILD now has
+          # the new sha256sums. Pull the regenerated .SRCINFO too if present.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO 2>/dev/null || git add PKGBUILD
+          git commit -m "upgrade to ${{ steps.upstream.outputs.latest }}" || echo "nothing to commit"
+          git push origin HEAD:master
