@@ -1,6 +1,6 @@
 # Maintainer: Giosuel <arch@giosuel.ch>
 pkgname=containerlab-bin
-pkgver=0.74.0
+pkgver=0.75.0
 pkgrel=1
 pkgdesc='Container-based networking labs'
 arch=('x86_64' 'aarch64')
