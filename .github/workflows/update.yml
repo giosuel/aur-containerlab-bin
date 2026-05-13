@@ -46,7 +46,7 @@ jobs:
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email:    ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "upgrade to ${{ steps.upstream.outputs.latest }}"
+          commit_message: "automated upgrade to ${{ steps.upstream.outputs.latest }}"
           updpkgsums: true       # downloads tarball, rewrites sha256sums
           test: true             # sanity-checks the build before publishing
           allow_empty_commits: false
