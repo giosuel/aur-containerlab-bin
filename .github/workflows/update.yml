@@ -39,7 +39,7 @@ jobs:
 
       - name: Publish to AUR
         if: steps.upstream.outputs.changed == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@2ac5a4c1d7035885d46b10e3193393be8460b6f1   # v4.1.1
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: containerlab-bin
           pkgbuild: ./PKGBUILD
